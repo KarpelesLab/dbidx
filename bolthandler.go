@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io/fs"
 )
 
 // BoltBucket interface compatible with both the original bolt and etc's bbolt
@@ -78,7 +79,10 @@ func BoltSet(idxBucket BoltBucket, idxCursor BoltCursor, prefix, key []byte, obj
 	return nil
 }
 
-func BoltSearch(idxBucket BoltBucket, idxCursor BoltCursor, prefix []byte, search map[string]any, indices ...*Index) (Iterator, error) {
+// BoltSearch searches the index for a given entry. A key matching exactly the
+// search is required, unless partial is >0, in which case only the number of
+// keys specified in partial need to match.
+func BoltSearch(idxBucket BoltBucket, idxCursor BoltCursor, prefix []byte, search map[string]any, partial int, indices ...*Index) (Iterator, error) {
 	// check if any of the passed indices match the requested search
 	if search == nil || len(search) == 0 {
 		// this is just a select *
@@ -102,7 +106,7 @@ keysloop:
 		}
 
 		// found the one!
-		spfx, err := k.ComputeSearchPrefix(prefix, search, 0)
+		spfx, err := k.ComputeSearchPrefix(prefix, search, partial)
 		if err != nil {
 			return nil, err
 		}
@@ -110,6 +114,21 @@ keysloop:
 	}
 
 	return nil, errors.New("no key matching search")
+}
+
+// BoltSearchOne will return the first key matching the search
+func BoltSearchOne(idxBucket BoltBucket, idxCursor BoltCursor, prefix []byte, search map[string]any, partial int, indices ...*Index) ([]byte, error) {
+	it, err := BoltSearch(idxBucket, idxCursor, prefix, search, partial, indices...)
+	if err != nil {
+		return nil, err
+	}
+	// release is not needed for bolt, but it's a good habit to put it here
+	defer it.Release()
+
+	if !it.Next() {
+		return nil, fs.ErrNotExist
+	}
+	return it.Key(), nil
 }
 
 type boltIterator struct {
