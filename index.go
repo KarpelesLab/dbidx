@@ -2,6 +2,7 @@ package dbidx
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"strings"
 
@@ -21,6 +22,10 @@ type Index struct {
 type encodeValueContext struct {
 	colBuf *collate.Buffer
 }
+
+var (
+	keyIndex = &Index{Name: "@key", Method: "binary", Unique: true}
+)
 
 // ComputeIndices returns a number of indices that can be used to index the given value
 func (k *Index) ComputeIndices(pfx []byte, id []byte, v any) [][]byte {
@@ -113,4 +118,14 @@ func getValueForField(v any, f string) any {
 		}
 	}
 	return v
+}
+
+// dataPrefix appends the index name followed by a nil char to pfx. If a key is specified, its length followed by the
+// key value itself is also appended
+func (k *Index) dataPrefix(pfx []byte, typ byte, key []byte) []byte {
+	res := append(append(append(pfx, typ), k.Name...), 0)
+	if key != nil {
+		res = append(binary.AppendUvarint(res, uint64(len(key))), key...)
+	}
+	return res
 }
