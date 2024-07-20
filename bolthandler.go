@@ -3,6 +3,7 @@ package dbidx
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 )
 
 // BoltBucket interface compatible with both the original bolt and etc's bbolt
@@ -85,8 +86,30 @@ func BoltSearch(idxBucket BoltBucket, idxCursor BoltCursor, prefix []byte, searc
 		return &boltIterator{idxBucket: idxBucket, idxCursor: idxCursor, prefix: pfx}, nil
 	}
 
-	// TODO
-	return nil, nil
+	cnt := len(search)
+keysloop:
+	for _, k := range indices {
+		found := 0
+		for _, s := range k.Fields {
+			if _, ok := search[s]; ok {
+				found += 1
+			} else {
+				continue keysloop
+			}
+		}
+		if found != cnt {
+			continue
+		}
+
+		// found the one!
+		spfx, err := k.ComputeSearchPrefix(prefix, search, 0)
+		if err != nil {
+			return nil, err
+		}
+		return &boltIterator{idxBucket: idxBucket, idxCursor: idxCursor, prefix: spfx}, nil
+	}
+
+	return nil, errors.New("no key matching search")
 }
 
 type boltIterator struct {

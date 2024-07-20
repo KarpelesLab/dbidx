@@ -65,7 +65,7 @@ func (k *Index) ComputeIndices(pfx []byte, id []byte, v any) [][]byte {
 // ComputeSearchPrefix will compute a prefix that can be used to locate data based on a given search
 func (k *Index) ComputeSearchPrefix(pfx []byte, search map[string]any, partial int) ([]byte, error) {
 	encodeCtx := &encodeValueContext{}
-	newKey := append(pfx, []byte(k.Name+"\x00")...)
+	newKey := k.dataPrefix(pfx, 1, nil)
 
 	for n, fn := range k.Fields {
 		if partial > 0 && n >= partial {
