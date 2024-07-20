@@ -79,10 +79,10 @@ func BoltSet(idxBucket BoltBucket, idxCursor BoltCursor, prefix, key []byte, obj
 	return nil
 }
 
-// BoltSearch searches the index for a given entry. A key matching exactly the
-// search is required, unless partial is >0, in which case only the number of
-// keys specified in partial need to match.
-func BoltSearch(idxBucket BoltBucket, idxCursor BoltCursor, prefix []byte, search map[string]any, partial int, indices ...*Index) (Iterator, error) {
+// BoltSearch searches the index for a given entry. A key matching all the
+// search parameters is required, unless partial is >0, in which case only the
+// number of keys specified in partial need to match.
+func BoltSearch(idxBucket BoltBucket, idxCursor BoltCursor, prefix []byte, search map[string]any, indices ...*Index) (Iterator, error) {
 	// check if any of the passed indices match the requested search
 	if search == nil || len(search) == 0 {
 		// this is just a select *
@@ -106,7 +106,7 @@ keysloop:
 		}
 
 		// found the one!
-		spfx, err := k.ComputeSearchPrefix(prefix, search, partial)
+		spfx, err := k.ComputeSearchPrefix(prefix, search, cnt)
 		if err != nil {
 			return nil, err
 		}
@@ -117,8 +117,8 @@ keysloop:
 }
 
 // BoltSearchOne will return the first key matching the search
-func BoltSearchOne(idxBucket BoltBucket, idxCursor BoltCursor, prefix []byte, search map[string]any, partial int, indices ...*Index) ([]byte, error) {
-	it, err := BoltSearch(idxBucket, idxCursor, prefix, search, partial, indices...)
+func BoltSearchOne(idxBucket BoltBucket, idxCursor BoltCursor, prefix []byte, search map[string]any, indices ...*Index) ([]byte, error) {
+	it, err := BoltSearch(idxBucket, idxCursor, prefix, search, indices...)
 	if err != nil {
 		return nil, err
 	}
